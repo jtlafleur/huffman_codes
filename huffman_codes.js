@@ -11,41 +11,33 @@ class priorityQueue{
     };
 
     enqueue(node){
-        var contain = false;
-
-        // if(this.queue.length < 1){
-        //     this.queue.push(node);
-        // }
-        //
-        //
-        // var l = 0;
-        // var r = this.queue.length -1;
-        // while(l <= r){
-        //     var mid = Math.floor((l+r) / 2);
-        //     if(node.frequency == this.queue[mid].frequency){
-        //         return
-        //     }
-        //     if(node.frequency > this.queue[mid].frequency){
-        //         l = mid + 1;
-        //     }
-        //     else{
-        //         r = mid - 1;
-        //     }
-        // }
-        // this.queue.splice(r, 0, node);
-
-
-        for (var i = 0; i < this.queue.length; i++) {
-            if (this.queue[i].frequency > node.frequency) {
-                this.queue.splice(i, 0, node);
-                contain = true;
-                break;
+        //binary search guy
+        if (this.queue.length === 0 || this.queue[this.queue.length - 1].frequency <= node.frequency)
+            this.queue.push(node);
+        else if (node.frequency <= this.queue[0].frequency)
+            this.queue.unshift(node);
+        else {
+            var i = Math.floor((this.queue.length) / 2);
+            while (true){
+                if (node.frequency >= this.queue[i].frequency && node.frequency <= this.queue[i+1].frequency) {
+                    this.queue.splice(i + 1, 0, node);
+                    break;
+                }
+                if (node.frequency <= this.queue[i].frequency && node.frequency >= this.queue[i - 1].frequency){
+                    this.queue.splice(i, 0, node);
+                    break;
+                }
+                if (node.frequency >= this.queue[i].frequency){
+                    i = i + Math.floor((this.queue.length - i) / 2);
+                }
+                else if (node.frequency <= this.queue[i].frequency){
+                    i = Math.floor(i / 2);
+                }
             }
         }
-        if (!contain) {
-            this.queue.push(node);
-        }
-    }
+        console.log(this.queue[this.queue.length - 1].symbol);
+    };
+
     dequeue(){
         if(this.queue.length == 0){
             return("Is empty");
@@ -53,7 +45,7 @@ class priorityQueue{
         else{
             return(this.queue.shift());
         }
-    }
+    };
 }
 
 class huffman_node{
@@ -74,7 +66,6 @@ class huffman_node{
 function readIn() {
     /* Step 1: Take text input from a file named "infile.dat" */
     var infile_path = prompt('Enter the path to your "infile.dat" to be loaded or nothing if "infile.dat" is in your current directory: ');
-//var outfile_path = prompt('Enter the path to your "outfile.dat" file to be saved or nothing if "outfile.dat" is in your current directory.\n');
 
     if (infile_path === '')
         infile_path = './infile.dat';
@@ -125,11 +116,13 @@ function readIn() {
  * 3) The length of the coded message in terms of the number of bits */
 
 function genTree(){
+    //generates a huffman tree
     var f = readIn();
-    var  i = 0;
+    console.log(f);
     var q = new priorityQueue();
-    for(; i < f.length; i++){
+    for(var i = 0; i < f.length; i++){
         var node = new huffman_node(f[i][0],i,f[i][1]);
+        console.log(node.symbol);
         q.enqueue(node);
     }
 
@@ -144,30 +137,42 @@ function genTree(){
         r.parentUpdate(par);
         q.enqueue(par);
     }
-    // var low = q.dequeue();
-    // var lowTwo = q.dequeue();
-    // var taco = new huffman_node((low.frequency + lowTwo.frequency), i++, null, low, lowTwo);
-    // low.parentUpdate(taco);
-    // lowTwo.parentUpdate(taco);
-    // q.enqueue(taco);
-    // console.log(taco.id);
-    //console.log(taco);
-    //console.log(low);
-    //console.log(lowTwo);
-    //console.log(taco);
-    var root = q.queue[0];
-    console.log(root);
+    return q;
 }
 
+function genTable(htree){
+    function genCodesHelper(node, huffCode){
+        if (node.symbol != null) {
+            return [[node.symbol, node.frequency, huffCode]];
+        }
+        else
+            return genCodesHelper(node.left, huffCode + '0').concat(genCodesHelper(node.right, huffCode + '1'));
+    }
+    return genCodesHelper(htree.queue[0], '')
+}
+
+function output(list){
+    var string = 'Symbol    Frequency   Huffman Codes\n';
+    for (var i = 0; i < list.length; i++){
+        var g = list[i][1].toFixed(2);
+        string+= list[i][0] + '         ' + g +  ' '.repeat(12 - String(g).length) + list[i][2] + '\n';
+
+    }
+    fs.writeFile('outfile.dat', string, (err)=> {
+        if (err) throw err;
+        console.log('File saved!');
+    })
+}
 
 function main() {
-    genTree();
+    var htree = genTree();
+    console.log(htree);
+    output(genTable(htree).sort());
 }
 
 main();
 
-
-// Change priority Q To not be so horifically inefficient
+// Change priority Q To not be so horifically inefficient - I think I did that
 // Traverse tree in order to obtain huffman codes
 // Generate all tables for output file
 // Fix read in function, if you enter garbage as the input it does some weird stuff
