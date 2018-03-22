@@ -5,12 +5,12 @@ var prompt = require('prompt-sync')();
 var fs = require('fs');
 
 
-class priorityQueue{
-    constructor(){
+class priorityQueue {
+    constructor() {
         this.queue = [];
     };
 
-    enqueue(node){
+    enqueue(node) {
         //binary search guy
         if (this.queue.length === 0 || this.queue[this.queue.length - 1].frequency <= node.frequency) {
             this.queue.push(node);
@@ -22,21 +22,21 @@ class priorityQueue{
             var l = 0;
             var r = this.queue.length - 1;
 
-            while (true){
-                var mid = Math.floor(l +((r-l) / 2));
-                if (node.frequency >= this.queue[mid].frequency && node.frequency <= this.queue[mid+1].frequency) {
+            while (true) {
+                var mid = Math.floor(l + ((r - l) / 2));
+                if (node.frequency >= this.queue[mid].frequency && node.frequency <= this.queue[mid + 1].frequency) {
                     this.queue.splice(mid + 1, 0, node);
                     break;
                 }
-                if (node.frequency <= this.queue[mid].frequency && node.frequency >= this.queue[mid - 1].frequency){
+                if (node.frequency <= this.queue[mid].frequency && node.frequency >= this.queue[mid - 1].frequency) {
                     this.queue.splice(mid, 0, node);
                     break;
                 }
-                if (node.frequency >= this.queue[mid].frequency){
+                if (node.frequency >= this.queue[mid].frequency) {
                     l = mid + 1;
                     //i = i + Math.floor((i + 1) / 2);
                 }
-                else if (node.frequency <= this.queue[mid].frequency){
+                else if (node.frequency <= this.queue[mid].frequency) {
                     r = mid - 1;
                     //i = Math.floor(i / 2);
                 }
@@ -44,18 +44,18 @@ class priorityQueue{
         }
     };
 
-    dequeue(){
-        if(this.queue.length == 0){
-            return("Is empty");
+    dequeue() {
+        if (this.queue.length == 0) {
+            return ("Is empty");
         }
-        else{
-            return(this.queue.shift());
+        else {
+            return (this.queue.shift());
         }
     };
 }
 
-class huffman_node{
-    constructor(frequency, id, symbol = null, left = null, right = null, parent = null){
+class huffman_node {
+    constructor(frequency, id, symbol = null, left = null, right = null, parent = null) {
         this.frequency = frequency;
         this.id = id;
         this.symbol = symbol;
@@ -64,7 +64,7 @@ class huffman_node{
         this.right = right;
     };
 
-    parentUpdate(parent){
+    parentUpdate(parent) {
         this.parent = parent;
     }
 }
@@ -80,7 +80,7 @@ function readIn(folderPath) {
         var infile = fs.readFileSync(folderPath, "utf8");
     }
     catch (error) {
-        return("The file doesn't exist");
+        return ("The file doesn't exist");
     }
 
     var frequencies = {};
@@ -106,25 +106,25 @@ function readIn(folderPath) {
     for (var key in frequencies) {
         frequencies[key] = (frequencies[key] / total_chars) * 100;
     }
-    var items = Object.keys(frequencies).map(function(key) {
+    var items = Object.keys(frequencies).map(function (key) {
         return [frequencies[key], key];
     });
 
     return [occur, items];
 }
 
-function genTree(input){
+function genTree(input) {
     //generates a huffman tree
     var q = new priorityQueue();
-    for(var i = 0; i < input.length; i++){
-        var node = new huffman_node(input[i][0],i,input[i][1]);
+    for (var i = 0; i < input.length; i++) {
+        var node = new huffman_node(input[i][0], i, input[i][1]);
         q.enqueue(node);
     }
 
     var l = null;
     var r = null;
     var par = null;
-    while(q.queue.length > 1){
+    while (q.queue.length > 1) {
         l = q.dequeue();
         r = q.dequeue();
         par = new huffman_node((l.frequency + r.frequency), i++, null, l, r);
@@ -135,8 +135,8 @@ function genTree(input){
     return q.queue[0];
 }
 
-function genTable(htree){
-    function genTableHelper(node, huffCode){
+function genTable(htree) {
+    function genTableHelper(node, huffCode) {
         if (node.symbol != null) {
             return [[node.symbol, node.frequency, huffCode]];
         }
@@ -146,20 +146,20 @@ function genTable(htree){
     return genTableHelper(htree, '')
 }
 
-function output(table, occur){
+function output(table, occur) {
     var string = 'Symbol    Frequency   Huffman Codes\n';
-    for (var i = 0; i < table.length; i++){
+    for (var i = 0; i < table.length; i++) {
         var g = table[i][1].toFixed(2);
-        string+= table[i][0] + '         ' + g +  ' '.repeat(12 - String(g).length) + table[i][2] + '\n';
+        string += table[i][0] + '         ' + g + ' '.repeat(12 - String(g).length) + table[i][2] + '\n';
     }
 
     var totalBits = 0;
-    for (var key = 0; key < table.length; key++){
+    for (var key = 0; key < table.length; key++) {
         totalBits += occur[table[key][0]] * table[key][2].length;
     }
-    string+= '\nTotal bits: ' + totalBits;
+    string += '\nTotal bits: ' + totalBits;
 
-    fs.writeFile('outfile.dat', string, (err)=> {
+    fs.writeFile('outfile.dat', string, (err) => {
         if (err) throw err;
         console.log('File saved!');
     })
@@ -168,11 +168,13 @@ function output(table, occur){
 function main() {
     var folderPath = prompt('Enter the path to your "infile.dat" to be loaded or nothing if "infile.dat" is in your current directory: ');
     var input = readIn(folderPath);
+    if (input == "The file doesn't exist") {
+        console.log("The file doesn't exist");
+        return;
+    }
     var htree = genTree(input[1]);
-    var table = genTable(htree).sort(function(a,b){return a[1] - b[1]});
+    var table = genTable(htree).sort(function (a, b) { return a[0] - b[0] });
     output(table, input[0]);
 }
 
 main();
-
-// Fix read in function, if you enter garbage as the input it does some weird stuff
