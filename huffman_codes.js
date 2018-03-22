@@ -12,30 +12,36 @@ class priorityQueue{
 
     enqueue(node){
         //binary search guy
-        if (this.queue.length === 0 || this.queue[this.queue.length - 1].frequency <= node.frequency)
+        if (this.queue.length === 0 || this.queue[this.queue.length - 1].frequency <= node.frequency) {
             this.queue.push(node);
-        else if (node.frequency <= this.queue[0].frequency)
+        }
+        else if (node.frequency <= this.queue[0].frequency) {
             this.queue.unshift(node);
+        }
         else {
-            var i = Math.floor((this.queue.length) / 2);
+            var l = 0;
+            var r = this.queue.length - 1;
+
             while (true){
-                if (node.frequency >= this.queue[i].frequency && node.frequency <= this.queue[i+1].frequency) {
-                    this.queue.splice(i + 1, 0, node);
+                var mid = Math.floor(l +((r-l) / 2));
+                if (node.frequency >= this.queue[mid].frequency && node.frequency <= this.queue[mid+1].frequency) {
+                    this.queue.splice(mid + 1, 0, node);
                     break;
                 }
-                if (node.frequency <= this.queue[i].frequency && node.frequency >= this.queue[i - 1].frequency){
-                    this.queue.splice(i, 0, node);
+                if (node.frequency <= this.queue[mid].frequency && node.frequency >= this.queue[mid - 1].frequency){
+                    this.queue.splice(mid, 0, node);
                     break;
                 }
-                if (node.frequency >= this.queue[i].frequency){
-                    i = i + Math.floor((this.queue.length - i) / 2);
+                if (node.frequency >= this.queue[mid].frequency){
+                    l = mid + 1;
+                    //i = i + Math.floor((i + 1) / 2);
                 }
-                else if (node.frequency <= this.queue[i].frequency){
-                    i = Math.floor(i / 2);
+                else if (node.frequency <= this.queue[mid].frequency){
+                    r = mid - 1;
+                    //i = Math.floor(i / 2);
                 }
             }
         }
-        console.log(this.queue[this.queue.length - 1].symbol);
     };
 
     dequeue(){
@@ -63,30 +69,34 @@ class huffman_node{
     }
 }
 
-function readIn() {
-    /* Step 1: Take text input from a file named "infile.dat" */
-    var infile_path = prompt('Enter the path to your "infile.dat" to be loaded or nothing if "infile.dat" is in your current directory: ');
-
-    if (infile_path === '')
-        infile_path = './infile.dat';
+function readIn(folderPath) {
+    /* Step 1: Take text input from a file named "infile.dat" and outputs
+    a list with two items: a dictionary containing letters and their rate
+    of occurrence and a list with frequencies (percentages) and letters */
+    if (folderPath === '')
+        folderPath = './infile.dat';
 
     try {
-        var infile = fs.readFileSync(infile_path, "utf8");
-        //console.log(infile);
+        var infile = fs.readFileSync(folderPath, "utf8");
     }
     catch (error) {
         return("The file doesn't exist");
     }
 
     var frequencies = {};
+    var occur = {};
     var letters = RegExp('[^A-Za-z]');
     for (var i of infile) {
         if (letters.test(i))
             continue;
-        if (i in frequencies)
+        if (i in frequencies) {
             frequencies[i] += 1;
-        else
+            occur[i] += 1;
+        }
+        else {
             frequencies[i] = 1;
+            occur[i] = 1;
+        }
     }
 
     var total_chars = 0;
@@ -99,30 +109,15 @@ function readIn() {
     var items = Object.keys(frequencies).map(function(key) {
         return [frequencies[key], key];
     });
-    return(items);
+
+    return [occur, items];
 }
-/* Step 2: Construct the frequency table according to the input text read from the file:
- * The frequency's must be listed, in order, from largest (at the top) to smallest (at the bottom) */
 
-//Done ^^ Steps one and two
-
-/* Step 3: Using the Huffman algorithm, construct the optimal prefix binary code for the table
- * The Huffman codes will be sorted in the same manner as the one above i.e. frequency, highest to lowest */
-
-
-/* Step 4: Produce the output, in the file "outfile.dat", consisting of
- * 1) The frequency table for the source text
- * 2) The Huffman code for each letter and digit in the source code
- * 3) The length of the coded message in terms of the number of bits */
-
-function genTree(){
+function genTree(input){
     //generates a huffman tree
-    var f = readIn();
-    console.log(f);
     var q = new priorityQueue();
-    for(var i = 0; i < f.length; i++){
-        var node = new huffman_node(f[i][0],i,f[i][1]);
-        console.log(node.symbol);
+    for(var i = 0; i < input.length; i++){
+        var node = new huffman_node(input[i][0],i,input[i][1]);
         q.enqueue(node);
     }
 
@@ -137,27 +132,33 @@ function genTree(){
         r.parentUpdate(par);
         q.enqueue(par);
     }
-    return q;
+    return q.queue[0];
 }
 
 function genTable(htree){
-    function genCodesHelper(node, huffCode){
+    function genTableHelper(node, huffCode){
         if (node.symbol != null) {
             return [[node.symbol, node.frequency, huffCode]];
         }
         else
-            return genCodesHelper(node.left, huffCode + '0').concat(genCodesHelper(node.right, huffCode + '1'));
+            return genTableHelper(node.left, huffCode + '0').concat(genTableHelper(node.right, huffCode + '1'));
     }
-    return genCodesHelper(htree.queue[0], '')
+    return genTableHelper(htree, '')
 }
 
-function output(list){
+function output(table, occur){
     var string = 'Symbol    Frequency   Huffman Codes\n';
-    for (var i = 0; i < list.length; i++){
-        var g = list[i][1].toFixed(2);
-        string+= list[i][0] + '         ' + g +  ' '.repeat(12 - String(g).length) + list[i][2] + '\n';
-
+    for (var i = 0; i < table.length; i++){
+        var g = table[i][1].toFixed(2);
+        string+= table[i][0] + '         ' + g +  ' '.repeat(12 - String(g).length) + table[i][2] + '\n';
     }
+
+    var totalBits = 0;
+    for (var key = 0; key < table.length; key++){
+        totalBits += occur[table[key][0]] * table[key][2].length;
+    }
+    string+= '\nTotal bits: ' + totalBits;
+
     fs.writeFile('outfile.dat', string, (err)=> {
         if (err) throw err;
         console.log('File saved!');
@@ -165,14 +166,13 @@ function output(list){
 }
 
 function main() {
-    var htree = genTree();
-    console.log(htree);
-    output(genTable(htree).sort());
+    var folderPath = prompt('Enter the path to your "infile.dat" to be loaded or nothing if "infile.dat" is in your current directory: ');
+    var input = readIn(folderPath);
+    var htree = genTree(input[1]);
+    var table = genTable(htree).sort(function(a,b){return a[1] - b[1]});
+    output(table, input[0]);
 }
 
 main();
 
-// Change priority Q To not be so horifically inefficient - I think I did that
-// Traverse tree in order to obtain huffman codes
-// Generate all tables for output file
 // Fix read in function, if you enter garbage as the input it does some weird stuff
